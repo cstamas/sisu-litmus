@@ -17,7 +17,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.io.UncheckedIOException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
@@ -368,7 +367,6 @@ public class TestIndexRule
           .copyTo(Files.asByteSink(new File(indexDir, "index.xsl")));
     }
     catch (IOException e) {
-      throw new RuntimeException(e);
       // well, that's it!
     }
   }
