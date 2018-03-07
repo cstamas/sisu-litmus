@@ -17,9 +17,10 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.nio.charset.Charset;
+import java.io.UncheckedIOException;
 import java.util.Iterator;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import javax.xml.bind.JAXBContext;
@@ -31,10 +32,10 @@ import org.sonatype.sisu.litmus.testsupport.junit.index.IndexXO;
 import org.sonatype.sisu.litmus.testsupport.junit.index.TestInfoXO;
 import org.sonatype.sisu.litmus.testsupport.junit.index.TestXO;
 
+import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import com.google.common.base.Throwables;
-import com.google.common.io.CharStreams;
 import com.google.common.io.Files;
 import com.google.common.io.Resources;
 import org.junit.rules.TestWatcher;
@@ -182,7 +183,7 @@ public class TestIndexRule
   @Override
   protected void starting(final Description description) {
     this.description = Preconditions.checkNotNull(description);
-    this.stopwatch = new Stopwatch().start();
+    this.stopwatch = Stopwatch.createStarted();
   }
 
   @Override
@@ -272,7 +273,7 @@ public class TestIndexRule
             copiedFileName = file.getName().substring(0, extPos);
             copiedFileExt = file.getName().substring(extPos);
           }
-          String copiedFilePath = copiedFileName + "-" + System.currentTimeMillis() + copiedFileExt;
+          String copiedFilePath = copiedFileName + "-" + UUID.randomUUID() + copiedFileExt;
           copied = new File(reportsDir, copiedFilePath);
         }
 
@@ -361,16 +362,13 @@ public class TestIndexRule
    */
   private void copyStyleSheets() {
     try {
-      Files.copy(
-          Resources.newInputStreamSupplier(Resources.getResource("index.css")),
-          new File(indexDir, "index.css")
-      );
-      Files.copy(
-          Resources.newInputStreamSupplier(Resources.getResource("index.xsl")),
-          new File(indexDir, "index.xsl")
-      );
+      Resources.asByteSource(Resources.getResource("index.css"))
+          .copyTo(Files.asByteSink(new File(indexDir, "index.css")));
+      Resources.asByteSource(Resources.getResource("index.xsl"))
+          .copyTo(Files.asByteSink(new File(indexDir, "index.xsl")));
     }
     catch (IOException e) {
+      throw new RuntimeException(e);
       // well, that's it!
     }
   }
@@ -412,7 +410,7 @@ public class TestIndexRule
       marshaller.marshal(index, writer);
 
       Files.createParentDirs(indexXml);
-      Files.copy(CharStreams.newReaderSupplier(writer.toString()), indexXml, Charset.forName("UTF-8"));
+      Files.write(writer.toString(), indexXml, Charsets.UTF_8);
     }
     catch (Exception e) {
       // TODO Should we fail the test if we cannot write the index?
